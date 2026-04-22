@@ -1,17 +1,31 @@
 #include "UI.hpp"
 #include <iostream>
 
-UI::UI(Person **people, PresenceList *presence) : _people{people},
-                                                  _presenceList{presence},
-                                                  _count{0}
+UI::UI(Person **people, PresenceList **presenceLists, int listCount)
+    : _people{people},
+      _presenceLists{presenceLists},
+      _count{0},
+      _listCount{listCount},
+      _selectedList{-1}
 {
+}
+
+namespace
+{
+    void clearScreen() // Kod czyszczacy okno konsoli
+    {
+        std::cout << "\033[2J\033[1;1H";
+    }
 }
 
 void UI::Loop()
 {
+    selectList();
+
     char cmd;
     int argInt;
     std::string argString;
+
     Person *person;
     int status = 0;
 
@@ -19,14 +33,19 @@ void UI::Loop()
     {
         printMenu();
         std::cin >> cmd;
+        clearScreen();
 
         switch (tolower(cmd))
         {
+        case 'l':
+            selectList();
+            break;
+
         case 'd':
 
             person = new Person();
 
-            std::cout << "Add INDEKS: ";
+            std::cout << "Dodaj INDEKS: ";
             std::cin >> argInt;
             if (findIdx(argInt) != -1 || person->SetIndex(argInt) != 0)
             {
@@ -36,21 +55,21 @@ void UI::Loop()
                 break;
             }
 
-            std::cout << "Add IMIE: ";
+            std::cout << "Dodaj IMIE: ";
             std::cin >> argString;
             if (person->SetName(argString) != 0)
             {
-                std::cout << "Dlugosc imienia musi byc dluzsza niz 1.\n";
+                std::cout << "Imie musi mieć 2+ znaki\n";
                 delete person;
                 person = nullptr;
                 break;
             }
 
-            std::cout << "Add NAZWISKO: ";
+            std::cout << "Dodaj NAZWISKO: ";
             std::cin >> argString;
             if (person->SetSurname(argString) != 0)
             {
-                std::cout << "Dlugosc nazwiska musi byc dluzsza niz 1.\n";
+                std::cout << "Nazwisko musi miec 2+ znaki\n";
                 delete person;
                 person = nullptr;
                 break;
@@ -75,11 +94,10 @@ void UI::Loop()
             std::cin >> argString;
 
             status = changeName(argInt, argString);
-            if(status == -1)
+            if (status == -1)
                 std::cout << "Brak osoby z takim indeksem.\n";
-            else
-            if(status == -2)
-                std::cout << "Nowe imie musi mieć co najmniej 2 znaki.\n";
+            else if (status == -2)
+                std::cout << "Imie musi mieć 2+ znaki.\n";
 
             break;
 
@@ -91,11 +109,10 @@ void UI::Loop()
             std::cin >> argString;
 
             status = changeSurname(argInt, argString);
-            if(status == -1)
+            if (status == -1)
                 std::cout << "Brak osoby z takim indeksem.\n";
-            else
-            if(status == -2)
-                std::cout << "Nowe nazwisko musi mieć co najmniej 2 znaki.\n";
+            else if (status == -2)
+                std::cout << "Nazwisko musi mieć 2+ znaki.\n";
 
             break;
 
@@ -106,7 +123,7 @@ void UI::Loop()
             argInt = findIdx(argInt);
 
             if (argInt != -1)
-                _presenceList->SetPresent(_people[argInt], true);
+                currentList()->SetPresent(_people[argInt], true);
             else
                 std::cout << "Brak osoby z takim indeksem.\n";
 
@@ -126,13 +143,44 @@ void UI::Loop()
     }
 }
 
+void UI::selectList()
+{
+    int id = -1;
+    bool ok = false;
+
+    do
+    {
+        std::cout << "Dostepne listy:\n";
+        for (int i = 0; i < _listCount; i++)
+            std::cout << " [" << i << "] Lista " << i << "\n";
+
+        std::cout << "Wybierz: ";
+        std::cin >> id;
+
+        ok = id >= 0 && id < _listCount;
+
+        if (!ok)
+        {
+            clearScreen();
+            std::cout << "Nie ma takiej listy.\n";
+        }
+    } while (!ok);
+
+    _selectedList = id;
+}
+
+PresenceList *UI::currentList()
+{
+    return _presenceLists[_selectedList];
+}
+
 void UI::addPerson(Person *nPerson)
 {
     if (_count >= 10)
         return;
 
     _people[_count] = nPerson;
-    _presenceList->Add(nPerson);
+    currentList()->Add(nPerson);
     (_count)++;
 }
 
@@ -144,7 +192,7 @@ int UI::removePerson(int indeks)
     {
         if (_people[i]->GetIndex() == indeks)
         {
-            _presenceList->Remove(_people[i]);
+            currentList()->Remove(_people[i]);
             delete _people[i];
             _people[i] = _people[_count - 1];
             (_count)--;
@@ -160,8 +208,10 @@ int UI::removePerson(int indeks)
 int UI::changeName(int indeks, std::string nImie)
 {
     int idx = findIdx(indeks);
-    if (idx == -1) return -1;
-    if (_people[idx]->SetName(nImie) == -1) return -2;
+    if (idx == -1)
+        return -1;
+    if (_people[idx]->SetName(nImie) == -1)
+        return -2;
     return 0;
 }
 
@@ -171,8 +221,10 @@ int UI::changeName(int indeks, std::string nImie)
 int UI::changeSurname(int indeks, std::string nNazwisko)
 {
     int idx = findIdx(indeks);
-    if (idx == -1) return -1;
-    if(_people[idx]->SetSurname(nNazwisko) == -1) return -2;
+    if (idx == -1)
+        return -1;
+    if (_people[idx]->SetSurname(nNazwisko) == -1)
+        return -2;
     return 0;
 }
 
@@ -180,24 +232,34 @@ void UI::displayPeople()
 {
     std::cout << "OSOBY:\n";
 
+    int count = 0; int present = 0;
     for (int i = 0; i < _count; i++)
     {
-        std::cout << "[" << (i + 1) << "]: "
+        int status = currentList()->IsPresent(_people[i]);
+
+        // ta osoba nie chodzi na te zajecia
+        if(status == -1) continue;
+        if(status == 1) present++;
+        count++;
+            
+        std::cout << " [" << (count) << "]: "
                   << "(" << _people[i]->GetIndex() << ") "
                   << _people[i]->GetName() << " "
                   << _people[i]->GetSurname() << " "
-                  << (_presenceList->IsPresent(_people[i]) ? "OBECNOSC" : "NIEOBECNOSC")
+                  << ((status == 1) ? "OBECNOSC" : "NIEOBECNOSC")
                   << "\n";
     }
+    std::cout << "OBECNI/WSZYSCY: " << present << '/' << count << '\n';
 }
 
 void UI::printMenu()
 {
-    std::cout << "--- Menu ---\n"
+    std::cout << "--- Menu --- LISTA: " << _selectedList
+              << "\n(L)iste zmien"
               << " (D)odaj"
               << " (U)staw obecnosc"
               << " (W)yswietl"
-              << " (S)kresl z listy"
+              << " (S)kresl ze studiow"
               << " (I)mie zmien"
               << " (N)azwisko zmien"
               << " (Q)Wyjdz"

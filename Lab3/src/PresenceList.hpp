@@ -10,7 +10,7 @@ class PresenceList
     int Add(Person *person);
     int Remove(Person *person);
     int SetPresent(Person *person, bool obecna);
-    bool IsPresent(Person *person);
+    int IsPresent(Person *person);
 
     private:
     int _capacity;

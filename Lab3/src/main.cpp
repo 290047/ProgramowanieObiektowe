@@ -3,12 +3,17 @@
 #include "PresenceList.hpp"
 #include "UI.hpp"
 
-const int N = 10;
+const int PERSON_COUNT = 10;
+const int LIST_COUNT = 2;
 
 int main()
 {
-    Person *people[N] = {nullptr};
-    PresenceList *presence = new PresenceList(N);
-    UI *ui = new UI(people, presence);
+    Person* people[PERSON_COUNT] = { nullptr };
+    
+    PresenceList* presence[LIST_COUNT];
+    for (int i = 0; i < LIST_COUNT; ++i)
+        presence[i] = new PresenceList(PERSON_COUNT);
+
+    UI* ui = new UI(people, presence, LIST_COUNT);
     ui->Loop();
 }

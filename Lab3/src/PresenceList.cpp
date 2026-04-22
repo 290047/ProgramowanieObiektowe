@@ -32,7 +32,7 @@ int PresenceList::Add(Person *osoba)
 }
 
 // Kody błędów:
-// -1: na liście nie ma tej osoby lub nie ma wcale osób
+// -1: na liście nie ma tej osoby lub nie ma żadnych osób
 int PresenceList::Remove(Person *person)
 {
     int idx = findIdx(person);
@@ -58,10 +58,15 @@ int PresenceList::SetPresent(Person *osoba, bool obecna)
     return 0;
 }
 
-bool PresenceList::IsPresent(Person *osoba)
+// Kody:
+// -1 = BRAK OSOBY NA LISCIE
+// 0 = NIEOBECNA
+// 1 = OBECNA
+int PresenceList::IsPresent(Person *osoba)
 {
     int idx = findIdx(osoba);
-    return idx == -1 ? false : _present[idx];
+    if(idx == -1) return -1;
+    return (_present[idx] ? 1 : 0);
 }
 
 int PresenceList::findIdx(Person *osoba)
